@@ -10,7 +10,7 @@
   <main class="card">
     <header class="header">
       <h1>Fitness Scorer</h1>
-      <p class="sub">Dropdowns like scroll wheels • CSV‑driven scoring • One‑screen layout</p>
+      <p class="sub">Dropdowns like scroll wheels • CSV-driven scoring (built-in) • One-screen layout</p>
     </header>
 
     <section class="row">
@@ -38,17 +38,17 @@
       </label>
 
       <label>
-        1‑min Push‑ups
+        1-min Push-ups
         <select id="pushups"></select>
       </label>
 
       <label>
-        1‑min Sit‑ups
+        1-min Sit-ups
         <select id="situps"></select>
       </label>
 
       <label>
-        1.5‑mile Run (mm:ss)
+        1.5-mile Run (mm:ss)
         <select id="runtime"></select>
       </label>
     </section>
@@ -56,12 +56,8 @@
     <section class="actions">
       <button id="calcBtn">Calculate</button>
       <button id="saveBtn">Save Score</button>
-      <label class="inline">
-        Import score rules (CSV)
-        <input type="file" id="csvInput" accept=".csv" />
-      </label>
       <button id="exportSavedBtn">Export Saved</button>
-      <a id="downloadRules" class="link" href="scores.csv" download>Download Rules Template</a>
+      <a id="downloadRules" class="link" href="scores.csv" download>Download Built-in Rules</a>
     </section>
 
     <section class="results">
@@ -70,8 +66,8 @@
         <div id="category" class="category badge gray">—</div>
       </div>
       <div class="breakdown">
-        <div><strong>Push‑ups:</strong> <span id="pScore">0.0</span></div>
-        <div><strong>Sit‑ups:</strong> <span id="sScore">0.0</span></div>
+        <div><strong>Push-ups:</strong> <span id="pScore">0.0</span></div>
+        <div><strong>Sit-ups:</strong> <span id="sScore">0.0</span></div>
         <div><strong>Run:</strong> <span id="rScore">0.0</span></div>
       </div>
     </section>
@@ -86,7 +82,7 @@
     </section>
 
     <footer class="footer">
-      <span>Tip: Use the CSV template to match your official scoring charts exactly.</span>
+      <span>Tip: Scoring rules are built-in from your official chart.</span>
       <a class="link" href="README.md" target="_blank">README</a>
     </footer>
   </main>
