@@ -1,4 +1,4 @@
-/* Fitness Scorer (Static CSV Version) */
+/* Fitness Scorer (Static CSV Version) — resilient matching + auto-calc */
 const ageEl=document.getElementById('age');
 const sexEl=document.getElementById('sex');
 const puEl=document.getElementById('pushups');
@@ -23,6 +23,8 @@ function buildDropdowns(){
     let o2=document.createElement('option');o2.textContent=n;suEl.appendChild(o2);}
   for(let t=8*60;t<=20*60;t+=5){const mm=Math.floor(t/60),ss=t%60;const opt=document.createElement('option');
     opt.textContent=`${pad(mm)}:${pad(ss)}`;opt.value=t;rtEl.appendChild(opt);}
+  // default to 0s and ~13:00 for visibility
+  puEl.value="0"; suEl.value="0"; rtEl.value=String(13*60);
 }
 buildDropdowns();
 
@@ -33,21 +35,103 @@ async function loadRules(){
 function parseCSV(text){
   const lines=text.trim().split(/\r?\n/);
   const rows=[];
+  // split accounting for quotes
+  function split(line){
+    const out=[];let cur='',q=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='\"'){q=!q;continue;}
+      if(c===',' && !q){out.push(cur);cur='';} else {cur+=c;}
+    }
+    out.push(cur);return out;
+  }
   for(let i=1;i<lines.length;i++){
-    const cols=lines[i].split(',');
+    if(!lines[i].trim()) continue;
+    const cols=split(lines[i]);
     if(cols.length<6)continue;
     const [AGE,GENDER,CAT,EVENT,RESULT,SCORE]=cols.map(s=>s.trim());
-    rows.push({AGE,GENDER,CAT,EVENT,RESULT,SCORE:parseFloat(SCORE)});
+    const scoreNum=parseFloat(SCORE);
+    const resNum=parseFloat(RESULT);
+    rows.push({AGE,GENDER,CAT,EVENT,RESULT: isNaN(resNum)?RESULT:resNum,SCORE: isNaN(scoreNum)?0:scoreNum});
   }
   return rows;
 }
-function filterRules(age,sex,event){return RULES.filter(r=>r.AGE===age&&r.GENDER.toLowerCase()===sex.toLowerCase()&&r.EVENT===event);}
+
+/* ---------- Matching helpers ---------- */
+function norm(str){return (str||'').toString().trim().toLowerCase().replace(/\s+/g,' ');}
+function eventKind(ev){
+  const e=norm(ev);
+  if(/run/.test(e)) return 'run';
+  if(/push/.test(e)) return 'push';
+  if(/sit/.test(e) || /crunch/.test(e) || /ab/.test(e)) return 'sit';
+  // fallback exact keys we use
+  if(e==='run') return 'run';
+  if(e.includes('push-up')||e.includes('pushups')) return 'push';
+  if(e.includes('sit-up')||e.includes('situps')) return 'sit';
+  return 'unknown';
+}
+
+// Parse an age band text into {min,max} (inclusive), where max can be Infinity
+function parseAgeBand(txt){
+  const s=norm(txt).replace(/\u2013|\u2014|–|—/g,'-'); // normalize dashes
+  // <25, <=24, under 25
+  if(/^<\s*\d+/.test(s) || /under\s+\d+/.test(s)){
+    const k = parseInt((s.match(/\d+/)||['0'])[0],10);
+    return {min: -Infinity, max: k-1};
+  }
+  if(/\d+\s*\+\s*$/.test(s) || /\d+\s*\+\s*years?/.test(s)){
+    const k = parseInt((s.match(/\d+/)||['0'])[0],10);
+    return {min: k, max: Infinity};
+  }
+  // 25-29, 25 – 29, 25 to 29
+  const m = s.match(/(\d+)\s*[-to]+\s*(\d+)/);
+  if(m){
+    const a=parseInt(m[1],10), b=parseInt(m[2],10);
+    return {min:a, max:b};
+  }
+  // fallback single number
+  const n = s.match(/(\d+)/);
+  if(n){
+    const v=parseInt(n[1],10);
+    return {min:v, max:v};
+  }
+  return null;
+}
+function sameBand(a,b){
+  // consider bands "equal" if their numeric spans match
+  if(!a||!b) return false;
+  return a.min===b.min && a.max===b.max;
+}
+
+function filterRules(ageLabel, sexLabel, desiredEvent){
+  const wantKind = eventKind(desiredEvent);
+  const wantAge = parseAgeBand(ageLabel);
+  const wantSex = norm(sexLabel);
+  const candidates = RULES.filter(r => {
+    const kind = eventKind(r.EVENT);
+    if (kind !== wantKind) return false;
+    // match sex loosely: male/female prefixes ok
+    const rSex = norm(r.GENDER);
+    if(!(rSex.startsWith('m') && wantSex.startsWith('m') || rSex.startsWith('f') && wantSex.startsWith('f'))) return false;
+    // age band
+    const rBand = parseAgeBand(r.AGE);
+    return sameBand(rBand, wantAge);
+  });
+  // If nothing matched, log debug
+  if(candidates.length===0){
+    console.warn('No rule matches for:', {ageLabel, sexLabel, desiredEvent, wantKind, wantAge});
+  }
+  return candidates;
+}
+
 function lookupRepsScore(age,sex,event,reps){
   const rs=filterRules(age,sex,event).filter(r=>!isNaN(parseFloat(r.RESULT))).map(r=>({res:parseFloat(r.RESULT),score:r.SCORE})).sort((a,b)=>a.res-b.res);
   let best=0.0;for(const row of rs){if(reps>=row.res)best=row.score;else break;}return best;}
 function lookupRunScore(age,sex,userSec){
   const rs=filterRules(age,sex,'Run').filter(r=>!isNaN(parseFloat(r.RESULT))).map(r=>({sec:parseFloat(r.RESULT),score:r.SCORE})).sort((a,b)=>a.sec-b.sec);
   let chosen=0.0;for(const row of rs){if(userSec<=row.sec){chosen=row.score;break;}chosen=row.score;}return chosen;}
+
+/* ---------- Compute & UI ---------- */
 function compute(){
   const age=ageEl.value,sex=sexEl.value,repsPU=parseInt(puEl.value||'0',10),repsSU=parseInt(suEl.value||'0',10),runSec=parseInt(rtEl.value||20*60,10);
   const p=lookupRepsScore(age,sex,'1 min Push-ups',repsPU);
@@ -62,8 +146,18 @@ function applyCategory(total){
   if(total>=72.0){label='Fit to Fight';klass='green';}else if(total>=60.0){label='Health Maintenance';klass='yellow';}else{label='Health Concern';klass='red';}
   categoryEl.textContent=label;categoryEl.classList.add(klass);
 }
+function triggerCompute(){compute();}
+
+['change','input'].forEach(evt=>{
+  ageEl.addEventListener(evt,triggerCompute);
+  sexEl.addEventListener(evt,triggerCompute);
+  puEl.addEventListener(evt,triggerCompute);
+  suEl.addEventListener(evt,triggerCompute);
+  rtEl.addEventListener(evt,triggerCompute);
+});
 calcBtn.addEventListener('click',compute);
 
+/* Saved table */
 function loadSaved(){try{return JSON.parse(localStorage.getItem('fitness_saved')||'[]');}catch{return[];}}
 function saveAll(items){localStorage.setItem('fitness_saved',JSON.stringify(items));}
 function renderSaved(){
@@ -89,4 +183,5 @@ exportSavedBtn.addEventListener('click',()=>{
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download='saved_scores.csv';a.click();URL.revokeObjectURL(url);
 });
-loadRules().then(()=>console.log('Built-in rules loaded'));
+
+loadRules().then(()=>{ console.log('Built-in rules loaded'); compute(); });

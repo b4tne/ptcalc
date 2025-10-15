@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fitness Scorer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="card">
+    <header class="header">
+      <h1>Fitness Scorer</h1>
+      <p class="sub">Dropdowns like scroll wheels • CSV-driven scoring (built-in) • One-screen layout</p>
+    </header>
+
+    <section class="row">
+      <label>
+        Sex
+        <select id="sex">
+          <option>Male</option>
+          <option>Female</option>
+        </select>
+      </label>
+
+      <label>
+        Age
+        <select id="age">
+          <option>&lt;25</option>
+          <option>25-29</option>
+          <option>30-34</option>
+          <option>35-39</option>
+          <option>40-44</option>
+          <option>45-49</option>
+          <option>50-54</option>
+          <option>55-59</option>
+          <option>60+</option>
+        </select>
+      </label>
+
+      <label>
+        1-min Push-ups
+        <select id="pushups"></select>
+      </label>
+
+      <label>
+        1-min Sit-ups
+        <select id="situps"></select>
+      </label>
+
+      <label>
+        1.5-mile Run (mm:ss)
+        <select id="runtime"></select>
+      </label>
+    </section>
+
+    <section class="actions">
+      <button id="calcBtn">Calculate</button>
+      <button id="saveBtn">Save Score</button>
+      <button id="exportSavedBtn">Export Saved</button>
+      <a id="downloadRules" class="link" href="scores.csv" download>Download Built-in Rules</a>
+    </section>
+
+    <section class="results">
+      <div class="scoreBox">
+        <div id="finalScore" class="score">0.0</div>
+        <div id="category" class="category badge gray">—</div>
+      </div>
+      <div class="breakdown">
+        <div><strong>Push-ups:</strong> <span id="pScore">0.0</span></div>
+        <div><strong>Sit-ups:</strong> <span id="sScore">0.0</span></div>
+        <div><strong>Run:</strong> <span id="rScore">0.0</span></div>
+      </div>
+    </section>
+
+    <section class="saved">
+      <h2>Saved Scores (private to this browser)</h2>
+      <div class="controls">
+        <input id="saveName" placeholder="Enter name to save…" />
+        <button id="clearSavedBtn">Clear All</button>
+      </div>
+      <div id="savedList" class="tableWrap"></div>
+    </section>
+
+    <footer class="footer">
+      <span>Tip: Scoring rules are built-in from your official chart.</span>
+      <a class="link" href="README.md" target="_blank">README</a>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
